@@ -3,34 +3,32 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 	"time"
 )
 
 type UCBRate struct {
-	BidRate float32 `json:"rate"`
+	BidRate                      float32 `json:"bidRate"`
+	ExchangeRateUpdatedTimestamp string  `json:"exchangeRateUpdatedTimestamp"`
 }
 
-type ErsteCurrencyRates struct {
-	Buying      float32 `json:"buying"`
-	BuyingCash  float32 `json:"buyingCash"`
-	Middle      float32 `json:"middle"`
-	Selling     float32 `json:"selling"`
-	SellingCash float32 `json:"sellingCash"`
-	Hnb         float32 `json:"hnb"`
-}
-type ErsteCurrency struct {
-	Name  string             `json:"name"`
-	Rates ErsteCurrencyRates `json:"rates"`
-}
 type ErsteRate struct {
 	Date       string          `json:"date"`
 	Currencies []ErsteCurrency `json:"currencies"`
 }
 
-type ErsteResponseRate struct {
+type ErsteCurrency struct {
+	Name  string             `json:"name"`
+	Rates ErsteCurrencyRates `json:"rates"`
+}
+
+type ErsteCurrencyRates struct {
+	Buying  float32 `json:"buying"`
+	Selling float32 `json:"selling"`
+}
+
+type ResponseRate struct {
 	Date string  `json:"date"`
 	Rate float32 `json:"rate"`
 }
@@ -74,14 +72,26 @@ func GetUCBExchange() {
 		return
 	}
 
-	body, err := io.ReadAll(resp.Body)
+	var rates []UCBRate
+	var rspRates []ResponseRate
+
+	err = json.NewDecoder(resp.Body).Decode(&rates)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	// Print the response body
-	fmt.Println(string(body))
+	for _, r := range rates {
+		rspRates = append(rspRates, ResponseRate{Date: r.ExchangeRateUpdatedTimestamp, Rate: r.BidRate})
+	}
+
+	jsonResp, err := json.Marshal(rspRates)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Println(string(jsonResp))
 }
 
 func GetErsteExchange() {
@@ -106,7 +116,7 @@ func GetErsteExchange() {
 	}
 
 	var rates []ErsteRate
-	var rspRates []ErsteResponseRate
+	var rspRates []ResponseRate
 
 	err = json.NewDecoder(resp.Body).Decode(&rates)
 	if err != nil {
@@ -125,7 +135,7 @@ func GetErsteExchange() {
 				bamCurrency = c
 			}
 		}
-		rspRates = append(rspRates, ErsteResponseRate{
+		rspRates = append(rspRates, ResponseRate{
 			Date: r.Date,
 			Rate: bamCurrency.Rates.Selling / gbpCurrency.Rates.Buying},
 		)
@@ -141,5 +151,6 @@ func GetErsteExchange() {
 }
 
 func main() {
+	GetUCBExchange()
 	GetErsteExchange()
 }
