@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -33,7 +34,12 @@ type ResponseRate struct {
 	Rate float32 `json:"rate"`
 }
 
-func GetUCBExchange() {
+type ApiResponse struct {
+	Erste []ResponseRate `json:"erste"`
+	UCB   []ResponseRate `json:"ucb"`
+}
+
+func getUCBExchange() ([]ResponseRate, error) {
 	const TIME_FORMAT = "20060102T03:04:05.0-0700"
 	dateTo := time.Now().Format(TIME_FORMAT)
 	dateFrom := time.Now().AddDate(0, 0, -7).Format(TIME_FORMAT)
@@ -41,7 +47,7 @@ func GetUCBExchange() {
 	req, err := http.NewRequest("POST", "https://www.unicredit.ba/cwa/GetExchangeRates", strings.NewReader(`{"Currency": "GBP", "DateFrom": "`+dateFrom+`", "DateTo": "`+dateTo+`"}`))
 	if err != nil {
 		fmt.Println(err)
-		return
+		return nil, err
 	}
 
 	req.Header.Set("authority", "www.unicredit.ba")
@@ -63,14 +69,15 @@ func GetUCBExchange() {
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		fmt.Println(err)
-		return
+		return nil, err
 	}
 
 	// Check if response is valid
 	if resp.StatusCode != http.StatusOK {
 		fmt.Println("Error: ", resp)
-		return
+		return nil, errors.New("Status code not OK")
 	}
+	defer resp.Body.Close()
 
 	var rates []UCBRate
 	var rspRates []ResponseRate
@@ -78,42 +85,37 @@ func GetUCBExchange() {
 	err = json.NewDecoder(resp.Body).Decode(&rates)
 	if err != nil {
 		fmt.Println(err)
-		return
+		return nil, err
 	}
 
 	for _, r := range rates {
 		rspRates = append(rspRates, ResponseRate{Date: r.ExchangeRateUpdatedTimestamp, Rate: r.BidRate})
 	}
 
-	jsonResp, err := json.Marshal(rspRates)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	fmt.Println(string(jsonResp))
+	return rspRates, nil
 }
 
-func GetErsteExchange() {
+func getErsteExchange() ([]ResponseRate, error) {
 	const TIME_FORMAT = "2006-01-02"
 	dateTo := time.Now().Format(TIME_FORMAT)
-	dateFrom := time.Now().AddDate(0, 0, -7).Format(TIME_FORMAT)
+	dateFrom := time.Now().AddDate(0, 0, -8).Format(TIME_FORMAT)
 	req, err := http.NewRequest("GET", `https://local.erstebank.hr/api/v1/fx?dateFrom=`+dateFrom+`&dateThru=`+dateTo+``, nil)
 	if err != nil {
 		fmt.Println(err)
-		return
+		return nil, err
 	}
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		fmt.Println(err)
-		return
+		return nil, err
 	}
 
 	if resp.StatusCode != http.StatusOK {
 		fmt.Println("Error: ", resp)
-		return
+		return nil, errors.New("Status code not OK")
 	}
+	defer resp.Body.Close()
 
 	var rates []ErsteRate
 	var rspRates []ResponseRate
@@ -121,7 +123,7 @@ func GetErsteExchange() {
 	err = json.NewDecoder(resp.Body).Decode(&rates)
 	if err != nil {
 		fmt.Println(err)
-		return
+		return nil, err
 	}
 
 	for _, r := range rates {
@@ -141,16 +143,18 @@ func GetErsteExchange() {
 		)
 	}
 
-	jsonResp, err := json.Marshal(rspRates)
+	return rspRates, nil
+}
+
+func Exchange(w http.ResponseWriter, r *http.Request) {
+	ratesUcb, _ := getUCBExchange()
+	ratesErste, _ := getErsteExchange()
+
+	jsonResp, err := json.Marshal(ApiResponse{Erste: ratesErste, UCB: ratesUcb})
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	fmt.Println(string(jsonResp))
-}
-
-func main() {
-	GetUCBExchange()
-	GetErsteExchange()
+	w.Write(jsonResp)
 }
