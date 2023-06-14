@@ -26,14 +26,14 @@ function generateChart(data) {
         {
           backgroundColor: "rgba(40,112,237,.7)",
           borderColor: "rgba(40,112,237,.7)",
-          data: data.erste.map((rate) => rate.rate),
+          data: (data.erste ?? []).map((rate) => rate.rate),
           label: "Erste",
           tension: 0.1,
         },
         {
           backgroundColor: "#e2001a",
           borderColor: "#e2001a",
-          data: data.ucb.map((rate) => rate.rate),
+          data: (data.ucb ?? []).map((rate) => rate.rate),
           label: "UCB",
           tension: 0.1,
         },

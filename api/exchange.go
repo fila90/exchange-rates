@@ -75,7 +75,7 @@ func getUCBExchange() ([]ResponseRate, error) {
 	// Check if response is valid
 	if resp.StatusCode != http.StatusOK {
 		fmt.Println("Error: ", resp)
-		return nil, errors.New("Status code not OK")
+		return nil, errors.New("status code not OK")
 	}
 	defer resp.Body.Close()
 
@@ -113,7 +113,7 @@ func getErsteExchange() ([]ResponseRate, error) {
 
 	if resp.StatusCode != http.StatusOK {
 		fmt.Println("Error: ", resp)
-		return nil, errors.New("Status code not OK")
+		return nil, errors.New("status code not OK")
 	}
 	defer resp.Body.Close()
 
