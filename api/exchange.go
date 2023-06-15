@@ -64,7 +64,6 @@ func getUCBCookie() string {
 	var sb strings.Builder
 
 	for _, c := range rsp.Cookies() {
-		fmt.Println(c.Name, c.Value)
 		sb.WriteString(c.Name + `=` + c.Value + `;`)
 	}
 
