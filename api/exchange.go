@@ -39,11 +39,43 @@ type ApiResponse struct {
 	UCB   []ResponseRate `json:"ucb"`
 }
 
+func getUCBCookie() string {
+	req, err := http.NewRequest("GET", "https://www.unicredit.ba/ba/stanovnistvo/tecajna_lista.html", nil)
+	if err != nil {
+		fmt.Println(err)
+		return ""
+	}
+
+	req.Header.Set("authority", "www.unicredit.ba")
+	req.Header.Set("accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8")
+	req.Header.Set("accept-language", "en-US,en;q=0.6")
+	req.Header.Set("cache-control", "no-cache")
+	req.Header.Set("pragma", "no-cache")
+	req.Header.Set("referer", "https://www.unicredit.ba/ba/stanovnistvo.html")
+	req.Header.Set("upgrade-insecure-requests", "1")
+	req.Header.Set("user-agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36")
+
+	rsp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		fmt.Println(err)
+		return ""
+	}
+
+	var sb strings.Builder
+
+	for _, c := range rsp.Cookies() {
+		fmt.Println(c.Name, c.Value)
+		sb.WriteString(c.Name + `=` + c.Value + `;`)
+	}
+
+	return sb.String()
+}
+
 func getUCBExchange() ([]ResponseRate, error) {
 	const TIME_FORMAT = "20060102T03:04:05.0-0700"
 	dateTo := time.Now().Format(TIME_FORMAT)
 	dateFrom := time.Now().AddDate(0, 0, -7).Format(TIME_FORMAT)
-	// Set the User-Agent header
+
 	req, err := http.NewRequest("POST", "https://www.unicredit.ba/cwa/GetExchangeRates", strings.NewReader(`{"Currency": "GBP", "DateFrom": "`+dateFrom+`", "DateTo": "`+dateTo+`"}`))
 	if err != nil {
 		fmt.Println(err)
@@ -64,6 +96,7 @@ func getUCBExchange() ([]ResponseRate, error) {
 	req.Header.Set("product", "PWS")
 	req.Header.Set("sourcesystem", "PWS")
 	req.Header.Set("user-agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36")
+	req.Header.Set("cookie", getUCBCookie())
 
 	// Get the exchange rate page from Unicredit.ba
 	resp, err := http.DefaultClient.Do(req)
